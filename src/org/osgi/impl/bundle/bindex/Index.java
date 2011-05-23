@@ -41,6 +41,7 @@ public class Index {
 	String name = "Untitled";
 	String urlTemplate = null;
 	URL root;
+	boolean ignoreFlag = false;
 	RepositoryImpl repository;
 	String stylesheet = "http://www.osgi.org/www/obr2html.xsl";
 
@@ -82,6 +83,8 @@ public class Index {
 					urlTemplate = args[++i];
 				else if (args[i].startsWith("-l")) {
 					licenseURL = new URL(new File("").toURL(), args[++i]);
+				}else if( args[i].startsWith("-i")){
+					ignoreFlag = true;
 				} else if (args[i].startsWith("-help")) {
 					System.err
 							.println("bindex " //
@@ -91,6 +94,7 @@ public class Index {
 									+ "[-help]\n" //
 									+ "[-l file:license.html ]\n" //
 									+ "[-quiet]\n" //
+									+ "[-i ] \n" //
 									+ "[-stylesheet " + stylesheet + "  ]\n" //
 									+ "<jar file>*");
 				} else {
@@ -162,22 +166,31 @@ public class Index {
 		}
 	}
 
-	void recurse(Set resources, File path) throws Exception {
+	void recurse(Set resources, File path) throws Exception  {
 		if (path.isDirectory()) {
 			String list[] = path.list();
 			for (int i = 0; i < list.length; i++) {
 				recurse(resources, new File(path, list[i]));
 			}
 		} else {
-			if (path.getName().endsWith("ar")) { //ARJUN PATCH.jar")) {
-				BundleInfo info = new BundleInfo(repository, path);
-				ResourceImpl resource = info.build();
-				if (urlTemplate != null) {
-					doTemplate(path, resource);
-				} else
-					resource.setURL(path.toURL());
+			if (path.getName().toLowerCase().endsWith("ar")) { //ARJUN PATCH.jar")) {
+				BundleInfo info;
+				try {
+					info = new BundleInfo(repository, path);
+					ResourceImpl resource = info.build();
+					if (urlTemplate != null) {
+						doTemplate(path, resource);
+					} else
+						resource.setURL(path.toURL());
 
-				resources.add(resource);
+					resources.add(resource);
+				} catch (Exception e) {
+					if( ignoreFlag == false ){
+						throw e;
+					}else{
+						System.err.println("ignoring: "+ path.getName());
+					}
+				}
 			}
 		}
 	}
